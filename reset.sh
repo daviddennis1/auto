@@ -1,2 +1,2 @@
-python auto.py --name=robot --reset
-python auto.py --name=robot
+python auto.py --name=demo --reset
+python auto.py --name=demo

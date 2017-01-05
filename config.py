@@ -1,4 +1,5 @@
 SETTINGS = {
+    "database": "postgres",
     "models": [
         {
             "Dog": {
@@ -35,5 +36,8 @@ class Command(BaseCommand):
 
     num_legs = models.IntegerField(null=True)
     good_bad = models.BooleanField()
+
+    # def __str__(s):
+    #     return 
     """
 }

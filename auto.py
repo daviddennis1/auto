@@ -3,6 +3,7 @@ from random import randint
 from subprocess import Popen, PIPE
 from config import SETTINGS, TEXT
 
+
 def args_to_kwargs(args):
     d = {}
     for k,v in args._get_kwargs():
@@ -11,7 +12,7 @@ def args_to_kwargs(args):
 
 def run_shell_cmd(cmd, silent=False):
     if not silent:
-        print('Running: "%s"' % ' '.join(cmd))
+        print('\tRunning: "%s"' % ' '.join(cmd))
     s = Popen(cmd , stdin=PIPE, stdout=PIPE, stderr=PIPE)
     lines = [o for o in s.stdout]
     if lines:
@@ -19,6 +20,7 @@ def run_shell_cmd(cmd, silent=False):
         for l in lines:
             print('\t\t'+l.decode('utf-8').replace('\n', ''))
     return lines
+
 
 class Main:
 
@@ -28,8 +30,12 @@ class Main:
         for k,v in kwargs.items():
             s.args[k] = v
 
-        s.reset()
+        s.setup()
         s.create_django_project()
+
+    def setup(s):
+        s.auto_dir = os.getcwd()
+        s.reset()
 
     def reset(s):
         if not s.args.get('reset'):
@@ -44,18 +50,21 @@ class Main:
             return
 
         s.proj_name = proj_name = s.args['name']
+        s.proj_dir = s.get_full_path(s.proj_name)
         cmd = 'django-admin startproject %s' % proj_name
         s.call(cmd)
-        print('\tCreated Django project: %s' % proj_name)
+        s.log('Created Django project: %s' % proj_name)
         s.cd(proj_name)
         s.startapp()
         s.add_app_to_settings()
-        #s.migrate()
+        s.migrate()
         s.create_mng_cmd_dir()
         s.create_demo_mng_cmd()
+        s.log('Created Management Command Directory + Stub command')
         s.create_models()
 
     def migrate(s):
+        s.cd(s.proj_dir)
         s.call('python manage.py migrate')
 
     def startapp(s):
@@ -63,7 +72,7 @@ class Main:
         cmd_txt = 'python manage.py startapp %s' % (app_name)
         cmd = cmd_txt.split(' ')
         s.call(cmd)
-        print('\tCreated app: %s' % app_name)
+        s.log('Created app: %s' % app_name)
 
     def add_app_to_settings(s):
         settings_file_path = s.get_full_path('/%s/%s/settings.py' % (s.proj_name, s.proj_name))
@@ -71,7 +80,7 @@ class Main:
         s.insert_in_file(settings_file_path,
                          'django.contrib.staticfiles',
                          new_line)
-        print('\tAdded "%s" to INSTALLED_APPS' % s.app_name)
+        s.log('Added "%s" to INSTALLED_APPS' % s.app_name)
 
     def insert_in_file(s, file_path, pattern, new_line):
         lines = s.get_lines_from_file(file_path)
@@ -80,15 +89,15 @@ class Main:
         #print(new_lines[:50])
         s.write_to_file(new_lines, file_path)
 
-    def create_mng_cmd_dir(s):
+    def create_mng_cmd_dir(s, silent=True):
         s.app_dir = parent_dir = s.get_full_path('%s/%s' % (s.proj_name, s.app_name))
-        s.create_module_dir('%s/management' % parent_dir)
+        s.create_module_dir('%s/management' % parent_dir, silent=silent)
         s.mng_cmd_dir = mng_cmd_dir = '%s/management/commands' % parent_dir
-        s.create_module_dir(mng_cmd_dir)
+        s.create_module_dir(mng_cmd_dir, silent=silent)
 
-    def create_demo_mng_cmd(s):
-        demo_mng_cmd_path = '%s/demo.py' % s.mng_cmd_dir
-        s.create_file(demo_mng_cmd_path)
+    def create_demo_mng_cmd(s, silent=True):
+        demo_mng_cmd_path = '%s/stub.py' % s.mng_cmd_dir
+        s.create_file(demo_mng_cmd_path, silent=True)
         #TODO: from %s.models import
         mngcmd_txt = TEXT['mngcmd_txt']
 
@@ -107,15 +116,15 @@ class Main:
         #print(new_lines)
         s.write_to_file(new_lines, model_path)
 
-    def create_module_dir(s, path):
-        s.create_dir(path)
-        s.create_file('%s/__init__.py' % path)
+    def create_module_dir(s, path, silent=False):
+        s.create_dir(path, silent=silent)
+        s.create_file('%s/__init__.py' % path, silent=silent)
 
-    def create_dir(s, path):
-        s.call('mkdir %s' % path)
+    def create_dir(s, path, silent=False):
+        s.call('mkdir %s' % path, silent=silent)
 
-    def create_file(s, file_path):
-        s.call('touch %s' % file_path)
+    def create_file(s, file_path, silent=False):
+        s.call('touch %s' % file_path, silent=silent)
 
     def write_to_file(s, content, file_path):
         line_mode = False
@@ -162,8 +171,9 @@ class Main:
     def get_full_path(s, path):
         if path[0] != '/':
             path = '/' + path
-        if not s.curr_dir in path:
-            return s.curr_dir + path
+        if not s.auto_dir in path:
+            new_path = s.auto_dir + path
+            return new_path
         return path
 
     def find_line_number(s, pattern, lines):
@@ -173,9 +183,10 @@ class Main:
         return None
 
     def cd(s, new_dir):
-        s.curr_dir = curr_dir = os.getcwd()
-        os.chdir(curr_dir + '/%s' % new_dir)
-        print('\tChanged directory to: %s' % os.getcwd())
+        if '/' not in new_dir:
+            s.curr_dir = curr_dir = os.getcwd()
+            os.chdir(curr_dir + '/%s' % new_dir)
+        s.log('Changed directory to: %s' % os.getcwd(), tabs=1)
 
     def mv(s, old_file_path, new_file_path, silent=False):
         s.call('mv %s %s' % (old_file_path, new_file_path), silent=silent)
@@ -193,6 +204,8 @@ class Main:
         if not s.args.get('test_run'):
             run_shell_cmd(cmd, silent=silent)
 
+    def log(s, text, tabs=0):
+        print('\t'*tabs + text)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
