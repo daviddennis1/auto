@@ -31,15 +31,9 @@ class Command(BaseCommand):
         print('Hello World!')""",
 
     #
-    'models': """from django.db import models
+    'models': """class FauxModel(models.Model):
 
-from app_ddb.models import BaseModel
-
-
-class DBUpdate(BaseModel):
-
-    agg1_tbl_forum_max_id = models.IntegerField(null=True)
-    agg1_tbl_forum_room_max_id = models.IntegerField(null=True)
-    agg1_tbl_forum_thread_max_id = models.IntegerField(null=True)
+    num_legs = models.IntegerField(null=True)
+    good_bad = models.BooleanField()
     """
 }

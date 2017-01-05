@@ -1,7 +1,7 @@
 import argparse, os, sys
 from random import randint
 from subprocess import Popen, PIPE
-from settings import SETTINGS, TEXT
+from config import SETTINGS, TEXT
 
 def args_to_kwargs(args):
     d = {}
@@ -95,6 +95,7 @@ class Main:
         s.write_to_file(mngcmd_txt, demo_mng_cmd_path)
 
     def create_models(s):
+        # TODO: Add BaseModel
         model_path = s.get_full_path('%s/models.py' % (s.app_dir))
         models_txt = TEXT['models']
 
