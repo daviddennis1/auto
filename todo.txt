@@ -10,6 +10,7 @@ views
 templates
 static files
 
+
 models concept
 favicon.ico
 create queries mng command
