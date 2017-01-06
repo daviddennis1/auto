@@ -1,5 +1,16 @@
 file concept
-postgres
 makemigrations
 config models
 admin
+============ ^Done
+postgres
+============ ^Done(ish)
+urls (app & project)
+views
+templates
+static files
+
+models concept
+favicon.ico
+create queries mng command
+============ ^TODO
