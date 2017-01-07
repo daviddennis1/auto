@@ -1,26 +1,38 @@
-import argparse, os, sys
+import argparse, os, sys, getpass
 from random import randint
 from subprocess import Popen, PIPE
 from config import SETTINGS, TEXT
 
 
 class Util:
-    def add_in_list(s, new_item, num, llist, one_line=False):
+    def add_in_list(s, new_item, index, llist, one_line=False, spaces_before=0):
         if isinstance(new_item, str) and not one_line:
             new_item = new_item.split('\n')
-        # print(llist[:num][-1], '!')
-        # print(llist[num:][0], '!')
-        llist = llist[:num] + [new_item] + llist[num:]
-        # print(llist[num-2:num+2])
+        llist = llist[:index] + ['']*spaces_before + [new_item] + llist[index:]
+
+        # Remove extra blank lines
+        rev_llist = llist[::-1]
+        for line in rev_llist:
+            if line == '' or s.str_is_all(line, ' '):
+                llist = llist[:-1]
+            else:
+                break
         return llist
 
     def log(s, text, tabs=0):
         print('\t'*tabs + text)
 
+    def str_is_all(s, string, pattern):
+        for c in string:
+            if c != pattern:
+                return False
+        return True
+
 
 class OSUtil(Util):
     def __init__(s, *args, **kwargs):
         s.auto_dir = os.getcwd()
+        s.curr_user = getpass.getuser()
 
     def get_full_path(s, path):
         if path[0] != '/':
@@ -95,9 +107,18 @@ class File(OSUtil):
                 s.content = f.read()
         s.lines = s.content.split('\n')
 
-    def insert_in_file(s, pattern, new_line):
+    def insert_in_file(s, pattern, new_line, spaces_before=0):
         line_number = s.find_line_number(pattern)
-        new_lines = s.add_in_list(new_line, line_number, s.lines, one_line=True)
+        new_lines = s.add_in_list(new_line, line_number, s.lines, one_line=True,
+                                  spaces_before=spaces_before)
+        s.write_to_file(new_lines)
+
+    def add_to_line(s, pattern, new_line):
+        new_lines = []
+        for line in s.lines:
+            if pattern in line:
+                line += new_line
+            new_lines.append(line)
         s.write_to_file(new_lines)
 
     def write_to_file(s, content, file_path=None):
@@ -205,6 +226,9 @@ class Main(OSUtil, DBUtil):
 
         s.proj_name = proj_name = s.args['name']
         s.proj_dir = s.get_full_path(s.proj_name)
+        s.app_name = app_name = 'app_' + s.proj_name
+        s.app_dir = s.get_full_path('%s/%s' % (s.proj_name, s.app_name))
+
         cmd = 'django-admin startproject %s' % proj_name
         s.call(cmd)
         s.log('Created Django project: %s' % proj_name)
@@ -212,12 +236,15 @@ class Main(OSUtil, DBUtil):
         s.startapp()
         s.add_app_to_settings()
         s.add_db_to_settings()
-        s.create_mng_cmd_dir()
-        s.create_demo_mng_cmd()
-        s.log('Created Management Command Directory + Stub command')
         s.create_models()
-        s.migrate()
-        s.add_models_to_admin()
+        # s.migrate()
+        s.add_templates()
+        s.add_views()
+        s.add_urls()
+        #s.create_mng_cmd_dir()
+        #s.create_demo_mng_cmd()
+        # s.log('Created Management Command Directory + Stub command')
+        # s.add_models_to_admin()
 
     def migrate(s):
         create_db_cmd = 'CREATE DATABASE %s;' % s.proj_name
@@ -228,11 +255,10 @@ class Main(OSUtil, DBUtil):
         s.call('python manage.py migrate')
 
     def startapp(s):
-        s.app_name = app_name = 'app_' + s.proj_name
-        cmd_txt = 'python manage.py startapp %s' % (app_name)
+        cmd_txt = 'python manage.py startapp %s' % (s.app_name)
         cmd = cmd_txt.split(' ')
         s.call(cmd)
-        s.log('Created app: %s' % app_name)
+        s.log('Created app: %s' % s.app_name)
 
     def add_app_to_settings(s):
         #settings_file_path = s.get_full_path('/%s/%s/settings.py' % (s.proj_name, s.proj_name))
@@ -248,10 +274,40 @@ class Main(OSUtil, DBUtil):
         if db_type not in ('mysql', 'postgres'):
             return
         db_settings_txt = TEXT['%s_db_settings' % db_type]
-        db_settings_txt = db_settings_txt % s.proj_name
+        db_settings_txt = db_settings_txt % (s.proj_name, s.curr_user)
 
         s.settings_file.remove_lines("'default': {", '}')
         s.settings_file.insert_in_file('DATABASES = {', db_settings_txt)
+
+    def add_templates(s):
+        template_dir = s.get_full_path('%s/templates' % s.app_dir)
+        s.create_dir(template_dir, silent=True)
+        template_app_dir = template_dir + '/' +  s.app_name
+        s.create_dir(template_app_dir, silent=True)
+        s.index_html_file = index_html_file = s.create_file(template_app_dir + '/index.html')
+        index_file_txt = TEXT['index_file_txt']
+        index_html_file.write_to_file(index_file_txt)
+
+    def add_views(s):
+        s.views_file = views_file = s.get_file('%s/views.py' % s.app_dir)
+        view_txt = TEXT['view_txt']
+        view_txt = view_txt % (s.models[0], s.app_name)
+        views_file.insert_in_file('from django.shortcuts import render', view_txt)
+        views_file.remove_lines('# Create your views here.')
+        views_file.insert_in_file('from django.http import HttpResponse',
+                                  s.import_models_str, spaces_before=1)
+
+    def add_urls(s):
+        # project urls
+        s.proj_urls_file = urls_file = s.get_file('%s/urls.py' % s.proj_name)
+        urls_file.add_to_line('from django.conf.urls import url', ', include')
+        url_line = TEXT['proj_url_txt'] % (s.proj_name, s.app_name)
+        urls_file.insert_in_file('admin.site.urls', url_line)
+
+        # app_urls
+        s.app_urls_file = app_urls_file = s.create_file('%s/urls.py' % s.app_name, silent=True)
+        urls_txt = TEXT['app_url_txt']
+        app_urls_file.write_to_file(urls_txt)
 
     def create_mng_cmd_dir(s, silent=True):
         s.app_dir = parent_dir = s.get_full_path('%s/%s' % (s.proj_name, s.app_name))
@@ -272,6 +328,7 @@ class Main(OSUtil, DBUtil):
         s.models_file = models_file = File('%s/models.py' % (s.app_dir))
         models_txt = TEXT['models']
         s.models = models = TEXT['example_models']
+        s.import_models_str = 'from %s.models import %s\n\n' % (s.app_name, ', '.join(s.models))
         models_txt = models_txt % models[0]
 
         models_file.insert_in_file('# Create your models here.', models_txt)
@@ -279,7 +336,7 @@ class Main(OSUtil, DBUtil):
 
     def add_models_to_admin(s):
         s.admin_file = admin_file = File('%s/admin.py' % s.app_dir)
-        admin_txt = 'from %s.models import %s\n\n' % (s.app_name, ', '.join(s.models))
+        admin_txt = s.import_models_str[:]
         for model_name in s.models:
             admin_txt += 'admin.site.register(%s)' % model_name
         admin_file.insert_in_file('# Register your models here.', admin_txt)

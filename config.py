@@ -46,7 +46,7 @@ class Command(BaseCommand):
     is_valid = models.BooleanField()
 
     # def __str__(s):
-    #     return 
+    #     return
     """,
 
     #
@@ -56,10 +56,56 @@ class Command(BaseCommand):
     "postgres_db_settings": """    'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': '%s',
-        'USER': 'postgres',
+        'USER': '%s',
         'PASSWORD': '',
         'HOST': 'localhost',
         'PORT': '5432',
     },
-    """
+    """,
+
+    #
+    "view_txt": """from django.http import HttpResponse
+def index(request):
+
+    context = {}
+
+    stub_list = %s.objects.all()
+    context['stub_list'] = stub_list
+
+    return render(request, '%s/index.html', context)
+    """,
+
+    #
+    "proj_url_txt": "    url(r'^%s/', include('%s.urls')),",
+
+    #
+    "app_url_txt": """from django.conf.urls import url
+
+from . import views
+
+urlpatterns = [
+    url(r'^$', views.index, name='index'),
+]""",
+
+    #
+    "index_file_txt": """<html>
+    <head>
+        <title></title>
+    </head>
+    <body>
+
+        <h1>Hello World!</h1>
+
+        <ul>
+            {% for stub in stub_list %}
+
+            <li>
+                {{ stub.watevs }}
+            </li>
+
+            {% endfor %}
+        </ul>
+
+    </body>
+</html>"""
 }
