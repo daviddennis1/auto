@@ -5,12 +5,11 @@ admin
 views
 urls (app & project)
 templates
+static files
+lib dir
 ============ ^Done
 postgres
 ============ ^Done(ish)
-static files
-lib dir
-
 path concept
 models concept
 favicon.ico

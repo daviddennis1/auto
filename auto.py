@@ -237,14 +237,16 @@ class Main(OSUtil, DBUtil):
         s.add_app_to_settings()
         s.add_db_to_settings()
         s.create_models()
-        # s.migrate()
+        s.migrate()
         s.add_templates()
         s.add_views()
         s.add_urls()
-        #s.create_mng_cmd_dir()
-        #s.create_demo_mng_cmd()
-        # s.log('Created Management Command Directory + Stub command')
-        # s.add_models_to_admin()
+        s.add_static_files()
+        s.create_mng_cmd_dir()
+        s.create_demo_mng_cmd()
+        s.log('Created Management Command Directory + Stub command')
+        s.add_models_to_admin()
+        s.add_lib_dir()
 
     def migrate(s):
         create_db_cmd = 'CREATE DATABASE %s;' % s.proj_name
@@ -309,6 +311,13 @@ class Main(OSUtil, DBUtil):
         urls_txt = TEXT['app_url_txt']
         app_urls_file.write_to_file(urls_txt)
 
+    def add_static_files(s):
+        s.static_dir = static_dir = s.get_full_path('%s/static' % s.app_dir)
+        s.create_dir(static_dir)
+        s.create_dir(static_dir + '/css')
+        s.create_dir(static_dir + '/js')
+        s.create_dir(static_dir + '/images')
+
     def create_mng_cmd_dir(s, silent=True):
         s.app_dir = parent_dir = s.get_full_path('%s/%s' % (s.proj_name, s.app_name))
         s.create_module_dir('%s/management' % parent_dir, silent=silent)
@@ -341,6 +350,9 @@ class Main(OSUtil, DBUtil):
             admin_txt += 'admin.site.register(%s)' % model_name
         admin_file.insert_in_file('# Register your models here.', admin_txt)
         admin_file.remove_lines('# Register your models here.')
+
+    def add_lib_dir(s):
+        s.create_dir(s.get_full_path('%s/lib' % s.app_dir))
 
     def get_file(s, file_path):
         f = File(file_path)
