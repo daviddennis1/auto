@@ -9,6 +9,7 @@ urls (app & project)
 views
 templates
 static files
+lib dir
 
 
 models concept
