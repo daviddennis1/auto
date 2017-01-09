@@ -35,8 +35,11 @@ class Command(BaseCommand):
     def handle(s, *args, **options):
         # url, name = s.process_args(options)
         print('Hello World!')
-        stub = StubModel(num_legs=2, good_bad=True)
-        stub.save()
+        if StubModel.objects.count() == 0:
+            for i in range(5):
+                stub = StubModel(num_legs=i, is_valid=True)
+                stub.save()
+            print("Created 5 %s's" % StubModel)
     """,
 
     #
@@ -100,7 +103,7 @@ urlpatterns = [
             {% for stub in stub_list %}
 
             <li>
-                {{ stub.watevs }}
+                {{ stub.num_legs }}
             </li>
 
             {% endfor %}

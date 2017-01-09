@@ -228,6 +228,7 @@ class Main(OSUtil, DBUtil):
         s.proj_dir = s.get_full_path(s.proj_name)
         s.app_name = app_name = 'app_' + s.proj_name
         s.app_dir = s.get_full_path('%s/%s' % (s.proj_name, s.app_name))
+        s.internal_path = [s.proj_dir, s.app_dir]
 
         cmd = 'django-admin startproject %s' % proj_name
         s.call(cmd)
@@ -247,6 +248,7 @@ class Main(OSUtil, DBUtil):
         s.log('Created Management Command Directory + Stub command')
         s.add_models_to_admin()
         s.add_lib_dir()
+        s.run_server()
 
     def migrate(s):
         create_db_cmd = 'CREATE DATABASE %s;' % s.proj_name
@@ -353,6 +355,12 @@ class Main(OSUtil, DBUtil):
 
     def add_lib_dir(s):
         s.create_dir(s.get_full_path('%s/lib' % s.app_dir))
+
+    def run_server(s):
+        s.cd(s.proj_dir)
+        link = 'http://127.0.0.1:8000/%s' % s.proj_name
+        s.log('Server Starting. Please visit: %s' % link)
+        s.call('python manage.py runserver 0.0.0.0:8000')
 
     def get_file(s, file_path):
         f = File(file_path)
