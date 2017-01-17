@@ -42,17 +42,17 @@ class Command(BaseCommand):
             print("Created 5 %s's" % StubModel)
     """,
 
-    #
+    # models.py Text
     'models': """class %s(models.Model):
 
     num_legs = models.IntegerField(null=True)
     is_valid = models.BooleanField()
 
-    # def __str__(s):
-    #     return
+    def __str__(s):
+        return 'Stub Model-' + str(s.num_legs)
     """,
 
-    #
+    # Example Models
     "example_models": ('StubModel',),
 
     #
